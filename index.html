@@ -1,0 +1,440 @@
+import { useState, useEffect, useCallback } from "react";
+
+const SENTENCES = [
+  {
+    text: "Clavicular was mid {jestergooning} when a group of {foids} spiked his {cortisol levels}",
+    context: "A streamer gets interrupted",
+    terms: {
+      "jestergooning": {
+        correct: "Acting like a clown for attention",
+        options: ["Acting like a clown for attention", "Doing intense cardio", "Playing video games badly", "Eating junk food on stream"]
+      },
+      "foids": {
+        correct: "Women (derogatory incel slang)",
+        options: ["Android robots", "Women (derogatory incel slang)", "Police officers", "Annoying fans"]
+      },
+      "cortisol levels": {
+        correct: "Stress / anxiety",
+        options: ["Blood sugar", "Testosterone", "Stress / anxiety", "Heart rate from exercise"]
+      }
+    }
+  },
+  {
+    text: "This {wageceling} {NPC} got completely {height-mogged} at the gym by a {gigachad}",
+    context: "Someone had a rough day",
+    terms: {
+      "wageceling": {
+        correct: "Working a dead-end job with no hope",
+        options: ["Making minimum wage", "Working a dead-end job with no hope", "Getting a raise", "Freelancing online"]
+      },
+      "NPC": {
+        correct: "A boring person with no original thoughts",
+        options: ["A new player in a game", "A boring person with no original thoughts", "Someone who's very smart", "A social media manager"]
+      },
+      "height-mogged": {
+        correct: "Made to look inferior by someone taller",
+        options: ["Got dunked on in basketball", "Was measured at a doctor's office", "Made to look inferior by someone taller", "Stood on tippy-toes to compete"]
+      },
+      "gigachad": {
+        correct: "An extremely attractive, dominant man",
+        options: ["A bodybuilder over 300lbs", "An extremely attractive, dominant man", "A famous TikToker", "Someone named Chad who's tall"]
+      }
+    }
+  },
+  {
+    text: "She's {looksmaxxing} with {softmaxx} techniques but honestly she should just {mew} and stop being {blackpilled}",
+    context: "Unsolicited appearance advice",
+    terms: {
+      "looksmaxxing": {
+        correct: "Trying to maximize physical attractiveness",
+        options: ["Getting plastic surgery", "Using heavy makeup filters", "Trying to maximize physical attractiveness", "Shopping for designer clothes"]
+      },
+      "softmaxx": {
+        correct: "Non-surgical self-improvement (skincare, gym, style)",
+        options: ["Using soft lighting for selfies", "Non-surgical self-improvement (skincare, gym, style)", "Being gentle with your skin", "Only doing easy workouts"]
+      },
+      "mew": {
+        correct: "Press tongue to roof of mouth to reshape jawline",
+        options: ["Make cat sounds to seem cute", "Press tongue to roof of mouth to reshape jawline", "Stay quiet and mysterious", "Chew gum constantly"]
+      },
+      "blackpilled": {
+        correct: "Believing looks are genetic & nothing can change them",
+        options: ["Taking a dangerous supplement", "Being extremely pessimistic about everything", "Believing looks are genetic & nothing can change them", "Getting into conspiracy theories"]
+      }
+    }
+  },
+  {
+    text: "My {SMV} is tanked because I'm a {sub-5} {framecel} who keeps getting {bonesmashed} by life",
+    context: "A self-deprecating post",
+    terms: {
+      "SMV": {
+        correct: "Sexual Market Value — perceived dating worth",
+        options: ["Social Media Views", "Sexual Market Value — perceived dating worth", "Standard Male Vitality score", "Small Medium Verification"]
+      },
+      "sub-5": {
+        correct: "Rated below 5/10 in attractiveness",
+        options: ["Under 5 feet tall", "Rated below 5/10 in attractiveness", "Having fewer than 5 friends", "Earning below $50k"]
+      },
+      "framecel": {
+        correct: "Someone with a small/narrow body frame",
+        options: ["A person who's always getting framed", "Someone who takes lots of selfies", "Someone with a small/narrow body frame", "A person who wears glasses"]
+      },
+      "bonesmashed": {
+        correct: "Hit in the face (from the jaw-smashing technique)",
+        options: ["Completely exhausted", "Hit in the face (from the jaw-smashing technique)", "Had bones broken in an accident", "Drank too much milk"]
+      }
+    }
+  },
+  {
+    text: "Bro {roidmaxxed} all summer then got {curve-mogged} by a {Stacy} who was {hardmaxxing} with fillers",
+    context: "An ironic gym story",
+    terms: {
+      "roidmaxxed": {
+        correct: "Took steroids to maximize muscle growth",
+        options: ["Worked out with extreme intensity", "Took steroids to maximize muscle growth", "Used protein powder excessively", "Got really angry at the gym"]
+      },
+      "curve-mogged": {
+        correct: "Outshone by someone's body curves/physique",
+        options: ["Thrown a curveball in conversation", "Rejected romantically", "Outshone by someone's body curves/physique", "Failed a fitness test"]
+      },
+      "Stacy": {
+        correct: "An idealized attractive woman",
+        options: ["A specific influencer named Stacy", "An idealized attractive woman", "A woman who works at the gym", "A Karen-type personality"]
+      },
+      "hardmaxxing": {
+        correct: "Using surgery/extreme methods to improve looks",
+        options: ["Training for a bodybuilding competition", "Using surgery/extreme methods to improve looks", "Following an extremely strict diet", "Working 80+ hour weeks"]
+      }
+    }
+  }
+];
+
+const TIERS = [
+  { min: 0, max: 0.25, label: "Blissfully Unaware", emoji: "👴", desc: "You have touched grass recently. Congratulations." },
+  { min: 0.25, max: 0.5, label: "Casually Online", emoji: "📱", desc: "You've seen some things. You can still be saved." },
+  { min: 0.5, max: 0.75, label: "Dangerously Fluent", emoji: "🧠", desc: "You understand too much. Your screen time report is concerning." },
+  { min: 0.75, max: 0.9, label: "Brainrot Scholar", emoji: "🎓", desc: "You could write a thesis on this. Please go outside." },
+  { min: 0.9, max: 1.01, label: "Terminally Online", emoji: "💀", desc: "You ARE the algorithm. There is no coming back." }
+];
+
+const ProgressBar = ({ current, total }) => (
+  <div style={{ width: "100%", height: 6, background: "#1a1a2e", borderRadius: 3, overflow: "hidden" }}>
+    <div style={{
+      width: `${(current / total) * 100}%`,
+      height: "100%",
+      background: "linear-gradient(90deg, #6c5ce7, #a855f7, #ec4899)",
+      borderRadius: 3,
+      transition: "width 0.5s ease"
+    }} />
+  </div>
+);
+
+export default function App() {
+  const [phase, setPhase] = useState("intro");
+  const [sentenceIdx, setSentenceIdx] = useState(0);
+  const [termIdx, setTermIdx] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [selected, setSelected] = useState(null);
+  const [showResult, setShowResult] = useState(false);
+  const [totalCorrect, setTotalCorrect] = useState(0);
+  const [totalQuestions, setTotalQuestions] = useState(0);
+  const [shake, setShake] = useState(false);
+  const [flash, setFlash] = useState(false);
+
+  const sentence = SENTENCES[sentenceIdx];
+  const termKeys = sentence ? Object.keys(sentence.terms) : [];
+  const currentTerm = termKeys[termIdx];
+  const currentData = sentence?.terms[currentTerm];
+  const totalTermsAll = SENTENCES.reduce((a, s) => a + Object.keys(s.terms).length, 0);
+  const completedTerms = Object.keys(answers).length;
+
+  const handleSelect = (option) => {
+    if (selected !== null) return;
+    setSelected(option);
+    const isCorrect = option === currentData.correct;
+    const key = `${sentenceIdx}-${termIdx}`;
+    setAnswers(p => ({ ...p, [key]: { selected: option, correct: currentData.correct, isCorrect } }));
+    if (isCorrect) {
+      setTotalCorrect(p => p + 1);
+      setFlash(true);
+      setTimeout(() => setFlash(false), 400);
+    } else {
+      setShake(true);
+      setTimeout(() => setShake(false), 500);
+    }
+    setTotalQuestions(p => p + 1);
+  };
+
+  const handleNext = () => {
+    setSelected(null);
+    if (termIdx < termKeys.length - 1) {
+      setTermIdx(t => t + 1);
+    } else if (sentenceIdx < SENTENCES.length - 1) {
+      setSentenceIdx(s => s + 1);
+      setTermIdx(0);
+    } else {
+      setPhase("results");
+    }
+  };
+
+  const renderSentence = () => {
+    const parts = sentence.text.split(/(\{[^}]+\})/g);
+    return parts.map((part, i) => {
+      const match = part.match(/^\{(.+)\}$/);
+      if (!match) return <span key={i} style={{ color: "#94a3b8" }}>{part}</span>;
+      const term = match[1];
+      const tidx = termKeys.indexOf(term);
+      const key = `${sentenceIdx}-${tidx}`;
+      const answered = answers[key];
+      const isCurrent = tidx === termIdx;
+      let bg = "rgba(108,92,231,0.15)";
+      let border = "1px solid rgba(108,92,231,0.3)";
+      let color = "#c4b5fd";
+      if (answered) {
+        if (answered.isCorrect) {
+          bg = "rgba(16,185,129,0.2)";
+          border = "1px solid rgba(16,185,129,0.5)";
+          color = "#6ee7b7";
+        } else {
+          bg = "rgba(239,68,68,0.2)";
+          border = "1px solid rgba(239,68,68,0.5)";
+          color = "#fca5a5";
+        }
+      } else if (isCurrent) {
+        bg = "rgba(168,85,247,0.3)";
+        border = "2px solid #a855f7";
+        color = "#e9d5ff";
+      }
+      return (
+        <span key={i} style={{
+          background: bg, border, color, padding: "2px 8px", borderRadius: 6,
+          fontWeight: 600, display: "inline-block", margin: "2px 0",
+          animation: isCurrent && !answered ? "pulse 2s infinite" : "none",
+          transition: "all 0.3s ease"
+        }}>
+          {term}
+        </span>
+      );
+    });
+  };
+
+  const ratio = totalQuestions > 0 ? totalCorrect / totalTermsAll : 0;
+  const tier = TIERS.find(t => ratio >= t.min && ratio < t.max) || TIERS[0];
+
+  const copyResult = () => {
+    const pct = Math.round((totalCorrect / totalTermsAll) * 100);
+    const t = TIERS.find(t => (totalCorrect/totalTermsAll) >= t.min && (totalCorrect/totalTermsAll) < t.max) || TIERS[0];
+    const text = `🧠 Decode the Brainrot\n${t.emoji} ${t.label}\n${totalCorrect}/${totalTermsAll} decoded (${pct}%)\n\n${t.desc}`;
+    navigator.clipboard.writeText(text);
+  };
+
+  const restart = () => {
+    setPhase("intro");
+    setSentenceIdx(0);
+    setTermIdx(0);
+    setAnswers({});
+    setSelected(null);
+    setShowResult(false);
+    setTotalCorrect(0);
+    setTotalQuestions(0);
+  };
+
+  if (phase === "intro") {
+    return (
+      <div style={{
+        minHeight: "100vh", background: "linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 50%, #0a1628 100%)",
+        display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "'Inter', system-ui, sans-serif"
+      }}>
+        <style>{`
+          @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.7; } }
+          @keyframes float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-10px); } }
+          @keyframes shake { 0%,100% { transform:translateX(0); } 25% { transform:translateX(-8px); } 75% { transform:translateX(8px); } }
+          @keyframes flashGreen { 0% { box-shadow:0 0 0 0 rgba(16,185,129,0.6); } 100% { box-shadow:0 0 40px 10px rgba(16,185,129,0); } }
+        `}</style>
+        <div style={{ textAlign: "center", maxWidth: 500 }}>
+          <div style={{ fontSize: 72, marginBottom: 16, animation: "float 3s ease-in-out infinite" }}>🧠</div>
+          <h1 style={{
+            fontSize: 36, fontWeight: 800, color: "white", margin: "0 0 8px",
+            background: "linear-gradient(90deg, #a855f7, #ec4899)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent"
+          }}>DECODE THE BRAINROT</h1>
+          <p style={{ color: "#94a3b8", fontSize: 16, margin: "0 0 12px", lineHeight: 1.5 }}>
+            We'll show you unhinged sentences from the internet.
+          </p>
+          <p style={{ color: "#c4b5fd", fontSize: 18, fontWeight: 600, margin: "0 0 32px" }}>
+            Your job: figure out what each highlighted term means.
+          </p>
+          <div style={{
+            background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.3)",
+            borderRadius: 12, padding: "16px 20px", marginBottom: 32, textAlign: "left"
+          }}>
+            <div style={{ color: "#e9d5ff", fontSize: 14, marginBottom: 8, fontWeight: 600 }}>Example:</div>
+            <p style={{ color: "#94a3b8", fontSize: 14, margin: 0, lineHeight: 1.6 }}>
+              "He was <span style={{ background: "rgba(168,85,247,0.3)", padding: "1px 6px", borderRadius: 4, color: "#e9d5ff" }}>mogging</span> everyone at the party"
+            </p>
+            <p style={{ color: "#6ee7b7", fontSize: 13, margin: "8px 0 0", fontStyle: "italic" }}>
+              → Outshining everyone in looks or presence
+            </p>
+          </div>
+          <button onClick={() => setPhase("game")} style={{
+            background: "linear-gradient(135deg, #7c3aed, #a855f7)", color: "white",
+            border: "none", borderRadius: 14, padding: "16px 48px", fontSize: 18,
+            fontWeight: 700, cursor: "pointer", transition: "transform 0.2s, box-shadow 0.2s",
+            boxShadow: "0 4px 24px rgba(168,85,247,0.4)"
+          }}
+          onMouseOver={e => { e.target.style.transform = "scale(1.05)"; e.target.style.boxShadow = "0 6px 32px rgba(168,85,247,0.6)"; }}
+          onMouseOut={e => { e.target.style.transform = "scale(1)"; e.target.style.boxShadow = "0 4px 24px rgba(168,85,247,0.4)"; }}
+          >
+            Start Decoding
+          </button>
+          <p style={{ color: "#64748b", fontSize: 13, marginTop: 16 }}>{totalTermsAll} terms across {SENTENCES.length} sentences</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === "results") {
+    const pct = Math.round((totalCorrect / totalTermsAll) * 100);
+    const finalTier = TIERS.find(t => (totalCorrect/totalTermsAll) >= t.min && (totalCorrect/totalTermsAll) < t.max) || TIERS[0];
+    return (
+      <div style={{
+        minHeight: "100vh", background: "linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 50%, #0a1628 100%)",
+        display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "'Inter', system-ui, sans-serif"
+      }}>
+        <div style={{ textAlign: "center", maxWidth: 440 }}>
+          <div style={{ fontSize: 80, marginBottom: 16, animation: "float 3s ease-in-out infinite" }}>{finalTier.emoji}</div>
+          <h2 style={{
+            fontSize: 32, fontWeight: 800, color: "white", margin: "0 0 4px",
+            background: "linear-gradient(90deg, #a855f7, #ec4899)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent"
+          }}>{finalTier.label}</h2>
+          <p style={{ color: "#94a3b8", fontSize: 15, margin: "8px 0 28px", lineHeight: 1.5 }}>{finalTier.desc}</p>
+          <div style={{
+            background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.3)",
+            borderRadius: 16, padding: 24, marginBottom: 28
+          }}>
+            <div style={{ fontSize: 48, fontWeight: 800, color: "white" }}>{totalCorrect}/{totalTermsAll}</div>
+            <div style={{ color: "#a78bfa", fontSize: 16, marginTop: 4 }}>terms decoded correctly</div>
+            <div style={{
+              width: "100%", height: 8, background: "#1a1a2e", borderRadius: 4, marginTop: 16, overflow: "hidden"
+            }}>
+              <div style={{
+                width: `${pct}%`, height: "100%", borderRadius: 4,
+                background: pct > 75 ? "linear-gradient(90deg, #6ee7b7, #10b981)" : pct > 50 ? "linear-gradient(90deg, #fbbf24, #f59e0b)" : "linear-gradient(90deg, #f87171, #ef4444)",
+                transition: "width 1s ease"
+              }} />
+            </div>
+            <div style={{ color: "#64748b", fontSize: 13, marginTop: 8 }}>{pct}% accuracy</div>
+          </div>
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+            <button onClick={copyResult} style={{
+              background: "linear-gradient(135deg, #7c3aed, #a855f7)", color: "white",
+              border: "none", borderRadius: 12, padding: "14px 28px", fontSize: 15,
+              fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 24px rgba(168,85,247,0.4)"
+            }}>
+              📋 Copy Result
+            </button>
+            <button onClick={restart} style={{
+              background: "rgba(255,255,255,0.08)", color: "#c4b5fd",
+              border: "1px solid rgba(168,85,247,0.3)", borderRadius: 12, padding: "14px 28px", fontSize: 15,
+              fontWeight: 600, cursor: "pointer"
+            }}>
+              🔄 Play Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      minHeight: "100vh", background: "linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 50%, #0a1628 100%)",
+      display: "flex", flexDirection: "column", alignItems: "center", padding: 20, fontFamily: "'Inter', system-ui, sans-serif"
+    }}>
+      <style>{`
+        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.7; } }
+        @keyframes float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-10px); } }
+        @keyframes shake { 0%,100% { transform:translateX(0); } 25% { transform:translateX(-8px); } 75% { transform:translateX(8px); } }
+        @keyframes flashGreen { 0% { box-shadow:0 0 0 0 rgba(16,185,129,0.6); } 100% { box-shadow:0 0 40px 10px rgba(16,185,129,0); } }
+      `}</style>
+
+      <div style={{ width: "100%", maxWidth: 560 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <span style={{ color: "#64748b", fontSize: 13 }}>Sentence {sentenceIdx + 1}/{SENTENCES.length}</span>
+          <span style={{ color: "#a78bfa", fontSize: 13, fontWeight: 600 }}>
+            {totalCorrect} correct
+          </span>
+        </div>
+        <ProgressBar current={completedTerms} total={totalTermsAll} />
+
+        <div style={{
+          background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: 16, padding: 24, marginTop: 20,
+          animation: flash ? "flashGreen 0.4s ease-out" : shake ? "shake 0.5s ease" : "none"
+        }}>
+          <div style={{ color: "#64748b", fontSize: 12, marginBottom: 12, textTransform: "uppercase", letterSpacing: 1 }}>
+            {sentence.context}
+          </div>
+          <p style={{ color: "#e2e8f0", fontSize: 18, lineHeight: 1.8, margin: 0, fontWeight: 500 }}>
+            "{renderSentence()}"
+          </p>
+        </div>
+
+        <div style={{ marginTop: 24 }}>
+          <div style={{ color: "#e9d5ff", fontSize: 14, marginBottom: 12, fontWeight: 600 }}>
+            What does <span style={{
+              background: "rgba(168,85,247,0.3)", padding: "2px 10px", borderRadius: 6
+            }}>{currentTerm}</span> mean?
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {currentData.options.map((opt, i) => {
+              let bg = "rgba(255,255,255,0.04)";
+              let border = "1px solid rgba(255,255,255,0.1)";
+              let color = "#cbd5e1";
+              if (selected !== null) {
+                if (opt === currentData.correct) {
+                  bg = "rgba(16,185,129,0.15)";
+                  border = "1px solid rgba(16,185,129,0.5)";
+                  color = "#6ee7b7";
+                } else if (opt === selected && opt !== currentData.correct) {
+                  bg = "rgba(239,68,68,0.15)";
+                  border = "1px solid rgba(239,68,68,0.5)";
+                  color = "#fca5a5";
+                }
+              }
+              return (
+                <button key={i} onClick={() => handleSelect(opt)} style={{
+                  background: bg, border, color, borderRadius: 12,
+                  padding: "14px 16px", fontSize: 14, textAlign: "left",
+                  cursor: selected ? "default" : "pointer", fontFamily: "inherit",
+                  transition: "all 0.2s ease", lineHeight: 1.4
+                }}
+                onMouseOver={e => { if (!selected) { e.target.style.background = "rgba(168,85,247,0.15)"; e.target.style.borderColor = "rgba(168,85,247,0.4)"; }}}
+                onMouseOut={e => { if (!selected) { e.target.style.background = bg; e.target.style.borderColor = "rgba(255,255,255,0.1)"; }}}
+                >
+                  <span style={{ marginRight: 8, opacity: 0.5 }}>{String.fromCharCode(65 + i)}.</span>
+                  {opt}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {selected && (
+          <div style={{ marginTop: 20, textAlign: "center" }}>
+            <button onClick={handleNext} style={{
+              background: "linear-gradient(135deg, #7c3aed, #a855f7)", color: "white",
+              border: "none", borderRadius: 12, padding: "14px 36px", fontSize: 15,
+              fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 24px rgba(168,85,247,0.4)",
+              transition: "transform 0.2s"
+            }}
+            onMouseOver={e => e.target.style.transform = "scale(1.04)"}
+            onMouseOut={e => e.target.style.transform = "scale(1)"}
+            >
+              {sentenceIdx === SENTENCES.length - 1 && termIdx === termKeys.length - 1 ? "See Results →" : "Next →"}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
