@@ -161,10 +161,29 @@ const TIERS = [
 const totalTermsAll = SENTENCES.reduce(function(a,s){return a+Object.keys(s.terms).length},0);
 const BG = "linear-gradient(160deg,#08080f 0%,#12091f 40%,#0d1420 100%)";
 
-// Post height to parent for iframe auto-resize
 function sendHeight() {
   var h = document.documentElement.scrollHeight;
   window.parent.postMessage({type:"resize", height: h}, "*");
+}
+
+function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text).then(function(){return true}).catch(function(){return fallbackCopy(text)});
+  }
+  return Promise.resolve(fallbackCopy(text));
+}
+
+function fallbackCopy(text) {
+  var ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.position = "fixed";
+  ta.style.left = "-9999px";
+  ta.style.top = "-9999px";
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try { document.execCommand("copy"); document.body.removeChild(ta); return true; }
+  catch(e) { document.body.removeChild(ta); return false; }
 }
 
 function BrainImg(props) {
@@ -194,7 +213,6 @@ function App() {
   var _i = useState(false), toastVis = _i[0], setToastVis = _i[1];
   var _j = useState(false), toastExit = _j[0], setToastExit = _j[1];
 
-  // Send height on every render
   useEffect(function(){ setTimeout(sendHeight, 50); });
 
   var sentence = SENTENCES[sentenceIdx];
@@ -237,7 +255,7 @@ function App() {
   }
 
   function shareQuiz() {
-    navigator.clipboard.writeText(SHARE_URL).then(function(){showToast()});
+    copyToClipboard(SHARE_URL).then(function(ok){if(ok) showToast()});
   }
 
   function restart() {
@@ -273,22 +291,13 @@ function App() {
   if (phase==="intro") {
     return e("div",{style:{background:BG,padding:"32px 24px 40px"}},
       e("div",{style:{textAlign:"center",maxWidth:480,margin:"0 auto",animation:"slideUp 0.6s ease-out"}},
-        e(BrainImg,{size:140,center:true}),
-        e("div",{style:{height:20}}),
-        e("h1",{style:{fontSize:40,fontWeight:900,color:"white",margin:"0 0 6px",letterSpacing:"-1px",background:"linear-gradient(135deg,#c084fc,#ec4899,#f97316)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",animation:"glow 3s ease-in-out infinite"}},"DECODE THE BRAINROT"),
-        e("p",{style:{color:"#64748b",fontSize:16,margin:"0 0 8px",lineHeight:1.6}},"We'll show you real, unhinged sentences from the internet."),
-        e("p",{style:{color:"#c4b5fd",fontSize:17,fontWeight:600,margin:"0 0 32px"}},"Your job: decode each highlighted slang term."),
-        e("div",{style:{background:"rgba(168,85,247,0.08)",border:"1px solid rgba(168,85,247,0.2)",borderRadius:14,padding:"18px 22px",marginBottom:36,textAlign:"left"}},
-          e("div",{style:{color:"#a78bfa",fontSize:11,marginBottom:10,fontWeight:700,textTransform:"uppercase",letterSpacing:2}},"Example"),
-          e("p",{style:{color:"#7a8599",fontSize:15,margin:0,lineHeight:1.7}},
-            "\"He was ",
-            e("span",{style:{background:"rgba(168,85,247,0.25)",padding:"2px 8px",borderRadius:5,color:"#e9d5ff",fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:"0.9em"}},"mogging"),
-            " everyone at the party\""
-          ),
-          e("p",{style:{color:"#6ee7b7",fontSize:13,margin:"10px 0 0",fontWeight:500}},"\u2192 Outshining everyone in looks or presence")
-        ),
-        e("button",{className:"srt-btn",onClick:function(){setPhase("game")},style:{background:"linear-gradient(135deg,#7c3aed,#a855f7,#c084fc)",color:"white",border:"none",borderRadius:50,padding:"18px 56px",fontSize:18,fontWeight:800,cursor:"pointer",fontFamily:"'Outfit',sans-serif",boxShadow:"0 4px 30px rgba(168,85,247,0.4)",letterSpacing:"0.5px",transition:"all 0.25s ease"}},"Start Decoding"),
-        e("p",{style:{color:"#475569",fontSize:13,marginTop:20,fontWeight:500}},totalTermsAll+" terms \u00b7 "+SENTENCES.length+" sentences")
+        e(BrainImg,{size:120,center:true}),
+        e("div",{style:{height:16}}),
+        e("h1",{style:{fontSize:36,fontWeight:900,color:"white",margin:"0 0 10px",letterSpacing:"-1px",background:"linear-gradient(135deg,#c084fc,#ec4899,#f97316)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",animation:"glow 3s ease-in-out infinite"}},"DECODE THE BRAINROT"),
+        e("p",{style:{color:"#94a3b8",fontSize:15,margin:"0 0 6px",lineHeight:1.6}},"We'll show you real sentences from the internet."),
+        e("p",{style:{color:"#c4b5fd",fontSize:16,fontWeight:600,margin:"0 0 28px"}},"Your job: figure out what each highlighted term means."),
+        e("button",{className:"srt-btn",onClick:function(){setPhase("game")},style:{background:"linear-gradient(135deg,#7c3aed,#a855f7,#c084fc)",color:"white",border:"none",borderRadius:50,padding:"16px 48px",fontSize:17,fontWeight:800,cursor:"pointer",fontFamily:"'Outfit',sans-serif",boxShadow:"0 4px 30px rgba(168,85,247,0.4)",letterSpacing:"0.5px",transition:"all 0.25s ease"}},"Start Decoding"),
+        e("p",{style:{color:"#475569",fontSize:13,marginTop:16,fontWeight:500}},totalTermsAll+" terms \u00b7 "+SENTENCES.length+" sentences")
       )
     );
   }
@@ -299,17 +308,17 @@ function App() {
     return e("div",{style:{background:BG,padding:"32px 24px 40px"}},
       e(Toast,{visible:toastVis,exiting:toastExit}),
       e("div",{style:{textAlign:"center",maxWidth:440,margin:"0 auto",animation:"scaleIn 0.5s ease-out"}},
-        e(BrainImg,{size:120,center:true}),
-        e("div",{style:{height:16}}),
-        e("h2",{style:{fontSize:34,fontWeight:900,margin:"0 0 6px",letterSpacing:"-0.5px",color:finalTier.color}},finalTier.label),
-        e("p",{style:{color:"#7a8599",fontSize:15,margin:"8px 0 32px",lineHeight:1.6}},finalTier.desc),
-        e("div",{style:{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:18,padding:28,marginBottom:28}},
-          e("div",{style:{fontSize:52,fontWeight:900,color:"white",letterSpacing:"-2px"}},totalCorrect+"/"+totalTermsAll),
+        e(BrainImg,{size:100,center:true}),
+        e("div",{style:{height:12}}),
+        e("h2",{style:{fontSize:32,fontWeight:900,margin:"0 0 6px",letterSpacing:"-0.5px",color:finalTier.color}},finalTier.label),
+        e("p",{style:{color:"#7a8599",fontSize:14,margin:"8px 0 28px",lineHeight:1.6}},finalTier.desc),
+        e("div",{style:{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:18,padding:24,marginBottom:24}},
+          e("div",{style:{fontSize:48,fontWeight:900,color:"white",letterSpacing:"-2px"}},totalCorrect+"/"+totalTermsAll),
           e("div",{style:{color:"#64748b",fontSize:14,marginTop:4,fontWeight:500}},"terms decoded correctly"),
-          e("div",{style:{width:"100%",height:8,background:"#1a1a2e",borderRadius:4,marginTop:20,overflow:"hidden"}},
+          e("div",{style:{width:"100%",height:8,background:"#1a1a2e",borderRadius:4,marginTop:16,overflow:"hidden"}},
             e("div",{style:{width:pct+"%",height:"100%",borderRadius:4,background:"linear-gradient(90deg,"+finalTier.color+","+finalTier.color+"cc)",transition:"width 1.2s ease"}})
           ),
-          e("div",{style:{color:"#475569",fontSize:13,marginTop:10,fontWeight:500}},pct+"% accuracy")
+          e("div",{style:{color:"#475569",fontSize:13,marginTop:8,fontWeight:500}},pct+"% accuracy")
         ),
         e("div",{style:{display:"flex",flexDirection:"column",gap:12,alignItems:"center"}},
           e("button",{className:"shr-btn",onClick:shareQuiz,style:{background:"linear-gradient(135deg,#7c3aed,#a855f7)",color:"white",border:"none",borderRadius:50,padding:"16px 40px",fontSize:16,fontWeight:800,cursor:"pointer",fontFamily:"'Outfit',sans-serif",boxShadow:"0 4px 24px rgba(168,85,247,0.4)",width:"100%",maxWidth:300,transition:"all 0.2s ease"}},"\uD83D\uDD17 Share This Quiz"),
