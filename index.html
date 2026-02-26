@@ -1,4 +1,44 @@
-import { useState, useEffect, useCallback } from "react";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Decode the Brainrot</title>
+<meta name="description" content="Can you translate the internet's most unhinged sentences? Test your brainrot fluency.">
+<meta property="og:title" content="Decode the Brainrot">
+<meta property="og:description" content="Can you translate the internet's most unhinged sentences?">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body, #root { height: 100%; width: 100%; }
+  body { font-family: 'Outfit', sans-serif; background: #08080f; overflow-x: hidden; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
+  @keyframes float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-10px); } }
+  @keyframes shake { 0%,100% { transform:translateX(0); } 20% { transform:translateX(-10px); } 40% { transform:translateX(10px); } 60% { transform:translateX(-6px); } 80% { transform:translateX(6px); } }
+  @keyframes flashIn { 0% { box-shadow:0 0 0 0 rgba(16,185,129,0.7); } 100% { box-shadow:0 0 60px 15px rgba(16,185,129,0); } }
+  @keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes scaleIn { from { opacity:0; transform:scale(0.9); } to { opacity:1; transform:scale(1); } }
+  @keyframes glow { 0%,100% { text-shadow: 0 0 20px rgba(168,85,247,0.4); } 50% { text-shadow: 0 0 40px rgba(168,85,247,0.7), 0 0 80px rgba(236,72,153,0.3); } }
+  .option-btn { transition: all 0.2s ease; cursor: pointer; }
+  .option-btn:not(.answered):hover { background: rgba(168,85,247,0.18) !important; border-color: rgba(168,85,247,0.5) !important; transform: translateX(4px); }
+  .next-btn { transition: all 0.2s ease; }
+  .next-btn:hover { transform: scale(1.05); box-shadow: 0 8px 32px rgba(168,85,247,0.5) !important; }
+  .start-btn { transition: all 0.25s ease; }
+  .start-btn:hover { transform: scale(1.06); box-shadow: 0 8px 40px rgba(168,85,247,0.6) !important; }
+  .share-btn { transition: all 0.2s ease; }
+  .share-btn:hover { transform: scale(1.04); }
+  .term-highlight { transition: all 0.3s ease; }
+  ::selection { background: rgba(168,85,247,0.4); color: white; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
 
 const SENTENCES = [
   {
@@ -110,57 +150,50 @@ const SENTENCES = [
 ];
 
 const TIERS = [
-  { min: 0, max: 0.25, label: "Blissfully Unaware", emoji: "👴", desc: "You have touched grass recently. Congratulations." },
-  { min: 0.25, max: 0.5, label: "Casually Online", emoji: "📱", desc: "You've seen some things. You can still be saved." },
-  { min: 0.5, max: 0.75, label: "Dangerously Fluent", emoji: "🧠", desc: "You understand too much. Your screen time report is concerning." },
-  { min: 0.75, max: 0.9, label: "Brainrot Scholar", emoji: "🎓", desc: "You could write a thesis on this. Please go outside." },
-  { min: 0.9, max: 1.01, label: "Terminally Online", emoji: "💀", desc: "You ARE the algorithm. There is no coming back." }
+  { min: 0, max: 0.25, label: "Blissfully Unaware", emoji: "👴", desc: "You have touched grass recently. Congratulations.", color: "#10b981" },
+  { min: 0.25, max: 0.5, label: "Casually Online", emoji: "📱", desc: "You've seen some things. You can still be saved.", color: "#3b82f6" },
+  { min: 0.5, max: 0.75, label: "Dangerously Fluent", emoji: "🧠", desc: "You understand too much. Your screen time report is concerning.", color: "#f59e0b" },
+  { min: 0.75, max: 0.9, label: "Brainrot Scholar", emoji: "🎓", desc: "You could write a thesis on this. Please go outside.", color: "#a855f7" },
+  { min: 0.9, max: 1.01, label: "Terminally Online", emoji: "💀", desc: "You ARE the algorithm. There is no coming back.", color: "#ef4444" }
 ];
 
-const ProgressBar = ({ current, total }) => (
-  <div style={{ width: "100%", height: 6, background: "#1a1a2e", borderRadius: 3, overflow: "hidden" }}>
-    <div style={{
-      width: `${(current / total) * 100}%`,
-      height: "100%",
-      background: "linear-gradient(90deg, #6c5ce7, #a855f7, #ec4899)",
-      borderRadius: 3,
-      transition: "width 0.5s ease"
-    }} />
-  </div>
-);
+const totalTermsAll = SENTENCES.reduce((a, s) => a + Object.keys(s.terms).length, 0);
 
-export default function App() {
+function App() {
   const [phase, setPhase] = useState("intro");
   const [sentenceIdx, setSentenceIdx] = useState(0);
   const [termIdx, setTermIdx] = useState(0);
   const [answers, setAnswers] = useState({});
   const [selected, setSelected] = useState(null);
-  const [showResult, setShowResult] = useState(false);
   const [totalCorrect, setTotalCorrect] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(0);
   const [shake, setShake] = useState(false);
   const [flash, setFlash] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const sentence = SENTENCES[sentenceIdx];
   const termKeys = sentence ? Object.keys(sentence.terms) : [];
   const currentTerm = termKeys[termIdx];
-  const currentData = sentence?.terms[currentTerm];
-  const totalTermsAll = SENTENCES.reduce((a, s) => a + Object.keys(s.terms).length, 0);
+  const currentData = sentence ? sentence.terms[currentTerm] : null;
   const completedTerms = Object.keys(answers).length;
 
   const handleSelect = (option) => {
     if (selected !== null) return;
     setSelected(option);
     const isCorrect = option === currentData.correct;
-    const key = `${sentenceIdx}-${termIdx}`;
-    setAnswers(p => ({ ...p, [key]: { selected: option, correct: currentData.correct, isCorrect } }));
+    const key = sentenceIdx + "-" + termIdx;
+    setAnswers(p => {
+      const next = {...p};
+      next[key] = { selected: option, correct: currentData.correct, isCorrect };
+      return next;
+    });
     if (isCorrect) {
       setTotalCorrect(p => p + 1);
       setFlash(true);
-      setTimeout(() => setFlash(false), 400);
+      setTimeout(() => setFlash(false), 500);
     } else {
       setShake(true);
-      setTimeout(() => setShake(false), 500);
+      setTimeout(() => setShake(false), 600);
     }
     setTotalQuestions(p => p + 1);
   };
@@ -181,260 +214,311 @@ export default function App() {
     const parts = sentence.text.split(/(\{[^}]+\})/g);
     return parts.map((part, i) => {
       const match = part.match(/^\{(.+)\}$/);
-      if (!match) return <span key={i} style={{ color: "#94a3b8" }}>{part}</span>;
+      if (!match) return React.createElement("span", { key: i, style: { color: "#7a8599" } }, part);
       const term = match[1];
       const tidx = termKeys.indexOf(term);
-      const key = `${sentenceIdx}-${tidx}`;
+      const key = sentenceIdx + "-" + tidx;
       const answered = answers[key];
       const isCurrent = tidx === termIdx;
-      let bg = "rgba(108,92,231,0.15)";
-      let border = "1px solid rgba(108,92,231,0.3)";
-      let color = "#c4b5fd";
+
+      let bg = "rgba(108,92,231,0.12)";
+      let border = "1px solid rgba(108,92,231,0.25)";
+      let color = "#b4a0e8";
+
       if (answered) {
         if (answered.isCorrect) {
-          bg = "rgba(16,185,129,0.2)";
-          border = "1px solid rgba(16,185,129,0.5)";
-          color = "#6ee7b7";
+          bg = "rgba(16,185,129,0.18)"; border = "1px solid rgba(16,185,129,0.5)"; color = "#6ee7b7";
         } else {
-          bg = "rgba(239,68,68,0.2)";
-          border = "1px solid rgba(239,68,68,0.5)";
-          color = "#fca5a5";
+          bg = "rgba(239,68,68,0.18)"; border = "1px solid rgba(239,68,68,0.5)"; color = "#fca5a5";
         }
       } else if (isCurrent) {
-        bg = "rgba(168,85,247,0.3)";
-        border = "2px solid #a855f7";
-        color = "#e9d5ff";
+        bg = "rgba(168,85,247,0.25)"; border = "2px solid #a855f7"; color = "#e9d5ff";
       }
-      return (
-        <span key={i} style={{
+
+      return React.createElement("span", {
+        key: i,
+        className: "term-highlight",
+        style: {
           background: bg, border, color, padding: "2px 8px", borderRadius: 6,
-          fontWeight: 600, display: "inline-block", margin: "2px 0",
-          animation: isCurrent && !answered ? "pulse 2s infinite" : "none",
-          transition: "all 0.3s ease"
-        }}>
-          {term}
-        </span>
-      );
+          fontWeight: 700, display: "inline-block", margin: "2px 1px",
+          fontFamily: "'Space Mono', monospace", fontSize: "0.85em",
+          animation: isCurrent && !answered ? "pulse 2s infinite" : "none"
+        }
+      }, term);
     });
   };
 
-  const ratio = totalQuestions > 0 ? totalCorrect / totalTermsAll : 0;
-  const tier = TIERS.find(t => ratio >= t.min && ratio < t.max) || TIERS[0];
+  const ratio = totalTermsAll > 0 ? totalCorrect / totalTermsAll : 0;
+  const finalTier = TIERS.find(t => ratio >= t.min && ratio < t.max) || TIERS[0];
 
   const copyResult = () => {
     const pct = Math.round((totalCorrect / totalTermsAll) * 100);
-    const t = TIERS.find(t => (totalCorrect/totalTermsAll) >= t.min && (totalCorrect/totalTermsAll) < t.max) || TIERS[0];
-    const text = `🧠 Decode the Brainrot\n${t.emoji} ${t.label}\n${totalCorrect}/${totalTermsAll} decoded (${pct}%)\n\n${t.desc}`;
-    navigator.clipboard.writeText(text);
+    const text = "\uD83E\uDDE0 Decode the Brainrot\n" + finalTier.emoji + " " + finalTier.label + "\n" + totalCorrect + "/" + totalTermsAll + " decoded (" + pct + "%)\n\n" + finalTier.desc;
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   };
 
   const restart = () => {
-    setPhase("intro");
-    setSentenceIdx(0);
-    setTermIdx(0);
-    setAnswers({});
-    setSelected(null);
-    setShowResult(false);
-    setTotalCorrect(0);
-    setTotalQuestions(0);
+    setPhase("intro"); setSentenceIdx(0); setTermIdx(0);
+    setAnswers({}); setSelected(null); setTotalCorrect(0);
+    setTotalQuestions(0); setCopied(false);
   };
 
+  const bg = "linear-gradient(160deg, #08080f 0%, #12091f 40%, #0d1420 100%)";
+
+  // INTRO SCREEN
   if (phase === "intro") {
-    return (
-      <div style={{
-        minHeight: "100vh", background: "linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 50%, #0a1628 100%)",
-        display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "'Inter', system-ui, sans-serif"
-      }}>
-        <style>{`
-          @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.7; } }
-          @keyframes float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-10px); } }
-          @keyframes shake { 0%,100% { transform:translateX(0); } 25% { transform:translateX(-8px); } 75% { transform:translateX(8px); } }
-          @keyframes flashGreen { 0% { box-shadow:0 0 0 0 rgba(16,185,129,0.6); } 100% { box-shadow:0 0 40px 10px rgba(16,185,129,0); } }
-        `}</style>
-        <div style={{ textAlign: "center", maxWidth: 500 }}>
-          <div style={{ fontSize: 72, marginBottom: 16, animation: "float 3s ease-in-out infinite" }}>🧠</div>
-          <h1 style={{
-            fontSize: 36, fontWeight: 800, color: "white", margin: "0 0 8px",
-            background: "linear-gradient(90deg, #a855f7, #ec4899)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent"
-          }}>DECODE THE BRAINROT</h1>
-          <p style={{ color: "#94a3b8", fontSize: 16, margin: "0 0 12px", lineHeight: 1.5 }}>
-            We'll show you unhinged sentences from the internet.
-          </p>
-          <p style={{ color: "#c4b5fd", fontSize: 18, fontWeight: 600, margin: "0 0 32px" }}>
-            Your job: figure out what each highlighted term means.
-          </p>
-          <div style={{
-            background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.3)",
-            borderRadius: 12, padding: "16px 20px", marginBottom: 32, textAlign: "left"
-          }}>
-            <div style={{ color: "#e9d5ff", fontSize: 14, marginBottom: 8, fontWeight: 600 }}>Example:</div>
-            <p style={{ color: "#94a3b8", fontSize: 14, margin: 0, lineHeight: 1.6 }}>
-              "He was <span style={{ background: "rgba(168,85,247,0.3)", padding: "1px 6px", borderRadius: 4, color: "#e9d5ff" }}>mogging</span> everyone at the party"
-            </p>
-            <p style={{ color: "#6ee7b7", fontSize: 13, margin: "8px 0 0", fontStyle: "italic" }}>
-              → Outshining everyone in looks or presence
-            </p>
-          </div>
-          <button onClick={() => setPhase("game")} style={{
-            background: "linear-gradient(135deg, #7c3aed, #a855f7)", color: "white",
-            border: "none", borderRadius: 14, padding: "16px 48px", fontSize: 18,
-            fontWeight: 700, cursor: "pointer", transition: "transform 0.2s, box-shadow 0.2s",
-            boxShadow: "0 4px 24px rgba(168,85,247,0.4)"
-          }}
-          onMouseOver={e => { e.target.style.transform = "scale(1.05)"; e.target.style.boxShadow = "0 6px 32px rgba(168,85,247,0.6)"; }}
-          onMouseOut={e => { e.target.style.transform = "scale(1)"; e.target.style.boxShadow = "0 4px 24px rgba(168,85,247,0.4)"; }}
-          >
-            Start Decoding
-          </button>
-          <p style={{ color: "#64748b", fontSize: 13, marginTop: 16 }}>{totalTermsAll} terms across {SENTENCES.length} sentences</p>
-        </div>
-      </div>
+    return React.createElement("div", {
+      style: { minHeight: "100vh", background: bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }
+    },
+      React.createElement("div", { style: { textAlign: "center", maxWidth: 480, animation: "slideUp 0.6s ease-out" } },
+        React.createElement("div", { style: { fontSize: 80, marginBottom: 20, animation: "float 3s ease-in-out infinite" } }, "\uD83E\uDDE0"),
+        React.createElement("h1", {
+          style: {
+            fontSize: 40, fontWeight: 900, color: "white", margin: "0 0 6px", letterSpacing: "-1px",
+            background: "linear-gradient(135deg, #c084fc, #ec4899, #f97316)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+            animation: "glow 3s ease-in-out infinite"
+          }
+        }, "DECODE THE BRAINROT"),
+        React.createElement("p", {
+          style: { color: "#64748b", fontSize: 16, margin: "0 0 8px", lineHeight: 1.6, fontWeight: 400 }
+        }, "We'll show you real, unhinged sentences from the internet."),
+        React.createElement("p", {
+          style: { color: "#c4b5fd", fontSize: 17, fontWeight: 600, margin: "0 0 32px" }
+        }, "Your job: decode each highlighted slang term."),
+
+        React.createElement("div", {
+          style: {
+            background: "rgba(168,85,247,0.08)", border: "1px solid rgba(168,85,247,0.2)",
+            borderRadius: 14, padding: "18px 22px", marginBottom: 36, textAlign: "left"
+          }
+        },
+          React.createElement("div", { style: { color: "#a78bfa", fontSize: 11, marginBottom: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 2 } }, "Example"),
+          React.createElement("p", { style: { color: "#7a8599", fontSize: 15, margin: 0, lineHeight: 1.7 } },
+            '"He was ',
+            React.createElement("span", {
+              style: { background: "rgba(168,85,247,0.25)", padding: "2px 8px", borderRadius: 5, color: "#e9d5ff", fontFamily: "'Space Mono', monospace", fontWeight: 700, fontSize: "0.9em" }
+            }, "mogging"),
+            ' everyone at the party"'
+          ),
+          React.createElement("p", { style: { color: "#6ee7b7", fontSize: 13, margin: "10px 0 0", fontWeight: 500 } },
+            "→ Outshining everyone in looks or presence"
+          )
+        ),
+
+        React.createElement("button", {
+          className: "start-btn",
+          onClick: () => setPhase("game"),
+          style: {
+            background: "linear-gradient(135deg, #7c3aed, #a855f7, #c084fc)", color: "white",
+            border: "none", borderRadius: 50, padding: "18px 56px", fontSize: 18,
+            fontWeight: 800, cursor: "pointer", fontFamily: "'Outfit', sans-serif",
+            boxShadow: "0 4px 30px rgba(168,85,247,0.4)", letterSpacing: "0.5px"
+          }
+        }, "Start Decoding"),
+        React.createElement("p", { style: { color: "#475569", fontSize: 13, marginTop: 20, fontWeight: 500 } },
+          totalTermsAll + " terms · " + SENTENCES.length + " sentences"
+        )
+      )
     );
   }
 
+  // RESULTS SCREEN
   if (phase === "results") {
     const pct = Math.round((totalCorrect / totalTermsAll) * 100);
-    const finalTier = TIERS.find(t => (totalCorrect/totalTermsAll) >= t.min && (totalCorrect/totalTermsAll) < t.max) || TIERS[0];
-    return (
-      <div style={{
-        minHeight: "100vh", background: "linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 50%, #0a1628 100%)",
-        display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "'Inter', system-ui, sans-serif"
-      }}>
-        <div style={{ textAlign: "center", maxWidth: 440 }}>
-          <div style={{ fontSize: 80, marginBottom: 16, animation: "float 3s ease-in-out infinite" }}>{finalTier.emoji}</div>
-          <h2 style={{
-            fontSize: 32, fontWeight: 800, color: "white", margin: "0 0 4px",
-            background: "linear-gradient(90deg, #a855f7, #ec4899)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent"
-          }}>{finalTier.label}</h2>
-          <p style={{ color: "#94a3b8", fontSize: 15, margin: "8px 0 28px", lineHeight: 1.5 }}>{finalTier.desc}</p>
-          <div style={{
-            background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.3)",
-            borderRadius: 16, padding: 24, marginBottom: 28
-          }}>
-            <div style={{ fontSize: 48, fontWeight: 800, color: "white" }}>{totalCorrect}/{totalTermsAll}</div>
-            <div style={{ color: "#a78bfa", fontSize: 16, marginTop: 4 }}>terms decoded correctly</div>
-            <div style={{
-              width: "100%", height: 8, background: "#1a1a2e", borderRadius: 4, marginTop: 16, overflow: "hidden"
-            }}>
-              <div style={{
-                width: `${pct}%`, height: "100%", borderRadius: 4,
-                background: pct > 75 ? "linear-gradient(90deg, #6ee7b7, #10b981)" : pct > 50 ? "linear-gradient(90deg, #fbbf24, #f59e0b)" : "linear-gradient(90deg, #f87171, #ef4444)",
-                transition: "width 1s ease"
-              }} />
-            </div>
-            <div style={{ color: "#64748b", fontSize: 13, marginTop: 8 }}>{pct}% accuracy</div>
-          </div>
-          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <button onClick={copyResult} style={{
-              background: "linear-gradient(135deg, #7c3aed, #a855f7)", color: "white",
-              border: "none", borderRadius: 12, padding: "14px 28px", fontSize: 15,
-              fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 24px rgba(168,85,247,0.4)"
-            }}>
-              📋 Copy Result
-            </button>
-            <button onClick={restart} style={{
-              background: "rgba(255,255,255,0.08)", color: "#c4b5fd",
-              border: "1px solid rgba(168,85,247,0.3)", borderRadius: 12, padding: "14px 28px", fontSize: 15,
-              fontWeight: 600, cursor: "pointer"
-            }}>
-              🔄 Play Again
-            </button>
-          </div>
-        </div>
-      </div>
+    return React.createElement("div", {
+      style: { minHeight: "100vh", background: bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }
+    },
+      React.createElement("div", { style: { textAlign: "center", maxWidth: 440, animation: "scaleIn 0.5s ease-out" } },
+        React.createElement("div", { style: { fontSize: 88, marginBottom: 16, animation: "float 3s ease-in-out infinite" } }, finalTier.emoji),
+        React.createElement("h2", {
+          style: {
+            fontSize: 34, fontWeight: 900, margin: "0 0 6px", letterSpacing: "-0.5px",
+            color: finalTier.color
+          }
+        }, finalTier.label),
+        React.createElement("p", { style: { color: "#7a8599", fontSize: 15, margin: "8px 0 32px", lineHeight: 1.6 } }, finalTier.desc),
+
+        React.createElement("div", {
+          style: {
+            background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: 18, padding: 28, marginBottom: 28
+          }
+        },
+          React.createElement("div", { style: { fontSize: 52, fontWeight: 900, color: "white", letterSpacing: "-2px" } }, totalCorrect + "/" + totalTermsAll),
+          React.createElement("div", { style: { color: "#64748b", fontSize: 14, marginTop: 4, fontWeight: 500 } }, "terms decoded correctly"),
+          React.createElement("div", {
+            style: { width: "100%", height: 8, background: "#1a1a2e", borderRadius: 4, marginTop: 20, overflow: "hidden" }
+          },
+            React.createElement("div", {
+              style: {
+                width: pct + "%", height: "100%", borderRadius: 4,
+                background: "linear-gradient(90deg, " + finalTier.color + ", " + finalTier.color + "cc)",
+                transition: "width 1.2s ease"
+              }
+            })
+          ),
+          React.createElement("div", { style: { color: "#475569", fontSize: 13, marginTop: 10, fontWeight: 500 } }, pct + "% accuracy")
+        ),
+
+        React.createElement("div", { style: { display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" } },
+          React.createElement("button", {
+            className: "share-btn",
+            onClick: copyResult,
+            style: {
+              background: copied ? "rgba(16,185,129,0.2)" : "linear-gradient(135deg, #7c3aed, #a855f7)",
+              color: copied ? "#6ee7b7" : "white",
+              border: copied ? "1px solid rgba(16,185,129,0.4)" : "none",
+              borderRadius: 50, padding: "14px 32px", fontSize: 15,
+              fontWeight: 700, cursor: "pointer", fontFamily: "'Outfit', sans-serif",
+              boxShadow: copied ? "none" : "0 4px 24px rgba(168,85,247,0.4)"
+            }
+          }, copied ? "✓ Copied!" : "📋 Copy Result"),
+          React.createElement("button", {
+            className: "share-btn",
+            onClick: restart,
+            style: {
+              background: "rgba(255,255,255,0.06)", color: "#94a3b8",
+              border: "1px solid rgba(255,255,255,0.1)", borderRadius: 50, padding: "14px 32px", fontSize: 15,
+              fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit', sans-serif"
+            }
+          }, "↻ Play Again")
+        )
+      )
     );
   }
 
-  return (
-    <div style={{
-      minHeight: "100vh", background: "linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 50%, #0a1628 100%)",
-      display: "flex", flexDirection: "column", alignItems: "center", padding: 20, fontFamily: "'Inter', system-ui, sans-serif"
-    }}>
-      <style>{`
-        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.7; } }
-        @keyframes float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-10px); } }
-        @keyframes shake { 0%,100% { transform:translateX(0); } 25% { transform:translateX(-8px); } 75% { transform:translateX(8px); } }
-        @keyframes flashGreen { 0% { box-shadow:0 0 0 0 rgba(16,185,129,0.6); } 100% { box-shadow:0 0 40px 10px rgba(16,185,129,0); } }
-      `}</style>
+  // GAME SCREEN
+  return React.createElement("div", {
+    style: { minHeight: "100vh", background: bg, display: "flex", flexDirection: "column", alignItems: "center", padding: "20px 20px 40px" }
+  },
+    React.createElement("div", { style: { width: "100%", maxWidth: 560 } },
 
-      <div style={{ width: "100%", maxWidth: 560 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <span style={{ color: "#64748b", fontSize: 13 }}>Sentence {sentenceIdx + 1}/{SENTENCES.length}</span>
-          <span style={{ color: "#a78bfa", fontSize: 13, fontWeight: 600 }}>
-            {totalCorrect} correct
-          </span>
-        </div>
-        <ProgressBar current={completedTerms} total={totalTermsAll} />
+      // Header
+      React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 } },
+        React.createElement("span", { style: { color: "#475569", fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 } },
+          "Sentence " + (sentenceIdx + 1) + " of " + SENTENCES.length
+        ),
+        React.createElement("span", {
+          style: {
+            color: "#6ee7b7", fontSize: 13, fontWeight: 700,
+            background: "rgba(16,185,129,0.1)", padding: "4px 12px", borderRadius: 20,
+            border: "1px solid rgba(16,185,129,0.2)"
+          }
+        }, "✓ " + totalCorrect)
+      ),
 
-        <div style={{
-          background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: 16, padding: 24, marginTop: 20,
-          animation: flash ? "flashGreen 0.4s ease-out" : shake ? "shake 0.5s ease" : "none"
-        }}>
-          <div style={{ color: "#64748b", fontSize: 12, marginBottom: 12, textTransform: "uppercase", letterSpacing: 1 }}>
-            {sentence.context}
-          </div>
-          <p style={{ color: "#e2e8f0", fontSize: 18, lineHeight: 1.8, margin: 0, fontWeight: 500 }}>
-            "{renderSentence()}"
-          </p>
-        </div>
+      // Progress bar
+      React.createElement("div", { style: { width: "100%", height: 4, background: "#151520", borderRadius: 2, overflow: "hidden", marginBottom: 24 } },
+        React.createElement("div", {
+          style: {
+            width: (completedTerms / totalTermsAll * 100) + "%", height: "100%",
+            background: "linear-gradient(90deg, #7c3aed, #a855f7, #ec4899)",
+            borderRadius: 2, transition: "width 0.5s ease"
+          }
+        })
+      ),
 
-        <div style={{ marginTop: 24 }}>
-          <div style={{ color: "#e9d5ff", fontSize: 14, marginBottom: 12, fontWeight: 600 }}>
-            What does <span style={{
-              background: "rgba(168,85,247,0.3)", padding: "2px 10px", borderRadius: 6
-            }}>{currentTerm}</span> mean?
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {currentData.options.map((opt, i) => {
-              let bg = "rgba(255,255,255,0.04)";
-              let border = "1px solid rgba(255,255,255,0.1)";
-              let color = "#cbd5e1";
-              if (selected !== null) {
-                if (opt === currentData.correct) {
-                  bg = "rgba(16,185,129,0.15)";
-                  border = "1px solid rgba(16,185,129,0.5)";
-                  color = "#6ee7b7";
-                } else if (opt === selected && opt !== currentData.correct) {
-                  bg = "rgba(239,68,68,0.15)";
-                  border = "1px solid rgba(239,68,68,0.5)";
-                  color = "#fca5a5";
-                }
+      // Sentence card
+      React.createElement("div", {
+        style: {
+          background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)",
+          borderRadius: 18, padding: "22px 24px", marginBottom: 24,
+          animation: flash ? "flashIn 0.5s ease-out" : shake ? "shake 0.5s ease" : "none"
+        }
+      },
+        React.createElement("div", {
+          style: { color: "#475569", fontSize: 11, marginBottom: 14, textTransform: "uppercase", letterSpacing: 2, fontWeight: 700 }
+        }, sentence.context),
+        React.createElement("p", {
+          style: { color: "#cbd5e1", fontSize: 18, lineHeight: 2, margin: 0, fontWeight: 500 }
+        }, '"', renderSentence(), '"')
+      ),
+
+      // Question
+      React.createElement("div", { style: { animation: "slideUp 0.3s ease-out" } },
+        React.createElement("div", { style: { color: "#94a3b8", fontSize: 14, marginBottom: 14, fontWeight: 500 } },
+          "What does ",
+          React.createElement("span", {
+            style: {
+              background: "rgba(168,85,247,0.2)", padding: "3px 10px", borderRadius: 6,
+              color: "#e9d5ff", fontFamily: "'Space Mono', monospace", fontWeight: 700
+            }
+          }, currentTerm),
+          " mean?"
+        ),
+
+        // Options
+        React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
+          currentData.options.map((opt, i) => {
+            let optBg = "rgba(255,255,255,0.03)";
+            let optBorder = "1px solid rgba(255,255,255,0.07)";
+            let optColor = "#94a3b8";
+            let cls = "option-btn";
+
+            if (selected !== null) {
+              cls += " answered";
+              if (opt === currentData.correct) {
+                optBg = "rgba(16,185,129,0.12)"; optBorder = "1px solid rgba(16,185,129,0.4)"; optColor = "#6ee7b7";
+              } else if (opt === selected && opt !== currentData.correct) {
+                optBg = "rgba(239,68,68,0.12)"; optBorder = "1px solid rgba(239,68,68,0.4)"; optColor = "#fca5a5";
               }
-              return (
-                <button key={i} onClick={() => handleSelect(opt)} style={{
-                  background: bg, border, color, borderRadius: 12,
-                  padding: "14px 16px", fontSize: 14, textAlign: "left",
-                  cursor: selected ? "default" : "pointer", fontFamily: "inherit",
-                  transition: "all 0.2s ease", lineHeight: 1.4
-                }}
-                onMouseOver={e => { if (!selected) { e.target.style.background = "rgba(168,85,247,0.15)"; e.target.style.borderColor = "rgba(168,85,247,0.4)"; }}}
-                onMouseOut={e => { if (!selected) { e.target.style.background = bg; e.target.style.borderColor = "rgba(255,255,255,0.1)"; }}}
-                >
-                  <span style={{ marginRight: 8, opacity: 0.5 }}>{String.fromCharCode(65 + i)}.</span>
-                  {opt}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+            }
 
-        {selected && (
-          <div style={{ marginTop: 20, textAlign: "center" }}>
-            <button onClick={handleNext} style={{
-              background: "linear-gradient(135deg, #7c3aed, #a855f7)", color: "white",
-              border: "none", borderRadius: 12, padding: "14px 36px", fontSize: 15,
-              fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 24px rgba(168,85,247,0.4)",
-              transition: "transform 0.2s"
-            }}
-            onMouseOver={e => e.target.style.transform = "scale(1.04)"}
-            onMouseOut={e => e.target.style.transform = "scale(1)"}
-            >
-              {sentenceIdx === SENTENCES.length - 1 && termIdx === termKeys.length - 1 ? "See Results →" : "Next →"}
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
+            return React.createElement("button", {
+              key: i,
+              className: cls,
+              onClick: () => handleSelect(opt),
+              style: {
+                background: optBg, border: optBorder, color: optColor, borderRadius: 12,
+                padding: "14px 16px", fontSize: 14, textAlign: "left",
+                cursor: selected ? "default" : "pointer", fontFamily: "'Outfit', sans-serif",
+                lineHeight: 1.5, fontWeight: 500, display: "flex", alignItems: "flex-start", gap: 10
+              }
+            },
+              React.createElement("span", {
+                style: {
+                  fontFamily: "'Space Mono', monospace", fontSize: 12, opacity: 0.4, flexShrink: 0, marginTop: 2
+                }
+              }, String.fromCharCode(65 + i)),
+              React.createElement("span", null, opt)
+            );
+          })
+        )
+      ),
+
+      // Next button
+      selected && React.createElement("div", {
+        style: { marginTop: 24, textAlign: "center", animation: "slideUp 0.3s ease-out" }
+      },
+        React.createElement("button", {
+          className: "next-btn",
+          onClick: handleNext,
+          style: {
+            background: "linear-gradient(135deg, #7c3aed, #a855f7)", color: "white",
+            border: "none", borderRadius: 50, padding: "14px 40px", fontSize: 15,
+            fontWeight: 700, cursor: "pointer", fontFamily: "'Outfit', sans-serif",
+            boxShadow: "0 4px 24px rgba(168,85,247,0.4)"
+          }
+        },
+          sentenceIdx === SENTENCES.length - 1 && termIdx === termKeys.length - 1 ? "See Results →" : "Next →"
+        )
+      )
+    )
   );
 }
+
+ReactDOM.render(React.createElement(App), document.getElementById("root"));
+</script>
+</body>
+</html>
+<script>
+setInterval(() => {
+  window.parent.postMessage({
+    type: 'resize',
+    height: document.getElementById('pvRoot').scrollHeight + 24
+  }, '*');
+}, 300);
+</script>
